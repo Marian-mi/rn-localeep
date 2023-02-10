@@ -1,0 +1,31 @@
+{
+  "name": "rn-translator-gt-r",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/generator": "^7.20.14",
+    "@babel/parser": "^7.20.15",
+    "@babel/traverse": "^7.20.13",
+    "prettier": "^2.8.4"
+  },
+  "engines": {
+    "node": ">=10.0.0"
+  },
+  "files": [
+    "src"
+  ],
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "prettier": {
+    "printWidth": 160,
+    "tabWidth": 4,
+    "semi":true
+  }
+}
