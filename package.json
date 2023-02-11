@@ -1,6 +1,6 @@
 {
   "name": "rn-translator-gt-r",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -20,9 +20,6 @@
   "files": [
     "src"
   ],
-  "publishConfig": {
-    "access": "restricted"
-  },
   "prettier": {
     "printWidth": 160,
     "tabWidth": 4,

@@ -49,6 +49,7 @@ const ProductPage = ({ route }) => {
         <ScrollView onScroll={(e) => setScrollY(e.nativeEvent.contentOffset.y)} stickyHeaderIndices={[0]}>
             <ProductPageHeader title={product.Title.Main} scrollY={scrollY} />
             <View style={{ position: "relative", zIndex: 0 }}>
+                <Text>{strings.addToCart}:یشصیصشی</Text>
                 <Carousel
                     data={product.ProductImages.BigGallery ?? product.ProductImages}
                     renderer={renderItem}
@@ -61,23 +62,20 @@ const ProductPage = ({ route }) => {
                         <View style={Styles.Description}>
                             <RenderHtml source={{ html: product.Description }} contentWidth={300} />
                         </View>
-                        <Text style={Styles.Price}>
-                            {product?.Prices?.NewPrice ?? "----"} {product?.Prices?.PriceUnit}
-                        </Text>
+                        <Text style={Styles.Price}>{product?.Prices?.NewPrice ?? "----"}</Text>
                         <Text style={Styles.Score}>با خرید این کالا ۴۰ عدد گیشانتیون دریافت میکنید</Text>
+                        <Text style={Styles.Score}>{esx ?? strings.similarProducts}</Text>
 
                         <View style={Styles.AddtoCart}>
                             <Icon name="cart-plus" size={32} color={"white"} />
                             <Text style={{ marginStart: 20, color: "white", fontSize: 18, fontFamily: "Samim" }}>
-                                {strings.addToCart}
+                                {strings.addToCart}:!!!!
                             </Text>
                         </View>
                     </View>
                 </View>
-                <Text>{strings.addToCart}</Text>
                 <ProductList products={product.SimilarProducts} title={strings.relatedProducts} />
-
-                <ProductList products={product.RelatedProducts} title={strings.similarProducts} />
+                <ProductList products={product.RelatedProducts} title={esx ?? "محصولات مرتبط"} />
             </View>
         </ScrollView>
     )
@@ -91,7 +89,7 @@ const Title = ({ title }) => (
             <Icon name="heart" size={26} color={Colors.Grey} style={{ marginEnd: 15 }} />
             <Icon name="share-variant" size={26} color={Colors.Grey} />
         </View>
-        <Text style={Styles.TitleText}>{title}</Text>
+        <Text style={Styles.TitleText}></Text>
     </View>
 )
 
@@ -99,12 +97,12 @@ const Buttons = () => (
     <View style={Flex.Row}>
         <Pressable style={Styles.Button}>
             <Icon name="comment-multiple" size={22} color={Colors.Grey} />
-            <Text style={Styles.ButtonLabel}>نظرات کاربران</Text>
+            <Text style={Styles.ButtonLabel}>{strings.userComments}</Text>
         </Pressable>
         <View style={{ flex: 1 }} />
         <Pressable style={Styles.Button}>
             <Icon name="clipboard-text-outline" size={26} color={Colors.Grey} />
-            <Text style={Styles.ButtonLabel}>مشخصات</Text>
+            <Text style={Styles.ButtonLabel}>{strings.attributes}</Text>
         </Pressable>
     </View>
 )

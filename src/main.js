@@ -2,11 +2,7 @@ const parser = require("@babel/parser");
 const generator = require("@babel/generator").default;
 const traverse = require("@babel/traverse").default;
 const fs = require("fs");
-const { format, createNode, recursiveReadDir, createKeyContainer } = require("./util");
-
-function translate(path, i18Object) {
-    translateDirector(path, i18Object);
-}
+const { format, createNode, recursiveReadDir, createKeyContainer, createKeyContainerForLogicalExp, persianAlphabetCodes, reviseText } = require("./util");
 
 function translateDirector(path, i18Object) {
     const files = recursiveReadDir(path, /.js$/);
@@ -38,34 +34,50 @@ function replaceTexts(ast, i18Object) {
         JSXElement: (item) => {
             if (item.node.openingElement.name.name !== "Text") return;
 
+            let ModifiedNodeArr = [];
+            let repalcedNodesCount = 0;
             item.node.children.forEach((child, ind) => {
                 if (child.type === "JSXText") {
-                    if (i18Object.hasOwnProperty(child.value)) {
-                        item.node.children[ind] = createKeyContainer(child.loc.start.line, i18Object, child.value);
-                        any = true;
-                    }
+                    const { result, extra } = reviseText(child.value);
+                    if (i18Object.hasOwnProperty(result)) {
+                        ModifiedNodeArr = ModifiedNodeArr.concat(createKeyContainer(child.loc.start.line, i18Object[result], extra));
+                        repalcedNodesCount++;
+                    } else ModifiedNodeArr.push(child);
                 }
-        
+
                 if (child.type === "JSXExpressionContainer") {
-                    if (i18Object.hasOwnProperty(child.expression.value)) {
-                        if (i18Object.hasOwnProperty(child.expression.value)) {
-                            item.node.children[ind] = createKeyContainer(child.loc.start.line, i18Object, child.expression.value);
-                            any = true;
-                        }
+                    if (child.expression.type === "StringLiteral") {
+                        const { result, extra } = reviseText(child.expression.value);
+                        if (i18Object.hasOwnProperty(result)) {
+                            ModifiedNodeArr = ModifiedNodeArr.concat(createKeyContainer(child.loc.start.line, i18Object[result], extra));
+                            repalcedNodesCount++;
+                        } else ModifiedNodeArr.push(child);
+                    }
+                    if (child.expression.type === "LogicalExpression" && child.expression.operator.match(/^\?\?$|^\&\&$/)) {
+                        if (i18Object.hasOwnProperty(child.expression.right.value)) {
+                            ModifiedNodeArr = ModifiedNodeArr.concat(createKeyContainerForLogicalExp(i18Object, child.expression));
+                            repalcedNodesCount++;
+                        } else ModifiedNodeArr.push(child);
                     }
                 }
             });
+
+            if (repalcedNodesCount > 0) any = true;
+
+            item.node.children = ModifiedNodeArr;
         },
         JSXAttribute: (item) => {
             if (item.node.value.type === "StringLiteral") {
-                if (i18Object.hasOwnProperty(item.node.value.value)) {
-                    item.node.value = createKeyContainer(item.node.loc.start.line, i18Object, item.node.value.value);
+                const { result, extra } = reviseText(item.node.value.value);
+                if (i18Object.hasOwnProperty(result)) {
+                    item.node.value = createKeyContainer(item.node.loc.start.line, i18Object[result], extra)[0];
                     any = true;
                 }
             }
             if (item.node.value.type === "JSXExpressionContainer") {
-                if (i18Object.hasOwnProperty(item.node.value.expression.value)) {
-                    item.node.value = createKeyContainer(item.node.loc.start.line, i18Object, item.node.value.expression.value);
+                const { result, extra } = reviseText(item.node.value.expression.value);
+                if (i18Object.hasOwnProperty(result)) {
+                    item.node.value = createKeyContainer(item.node.loc.start.line, i18Object[result], extra)[0];
                     any = true;
                 }
             }
@@ -123,10 +135,6 @@ function astToCode(ast, path) {
     fs.writeFileSync("./src/out.js", format(code), { encoding: "utf-8" });
 }
 
-const i18Objectt = {
-    "افزودن به سبد خرید": "addToCart",
-    "محصولات مشابه": "relatedProducts",
-    "محصولات مرتبط": "similarProducts"
-};
-
-translate("./src/tapo", i18Objectt);
+module.exports = {
+    default: translateDirector,
+}
