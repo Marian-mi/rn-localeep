@@ -42,7 +42,16 @@ function createNode(scriptString, line) {
 }
 
 function createKeyContainer(line, value, extra) {
-    const nodes = createNode(`<Text>${extra.prep}{strings.${value}}${extra.app}</Text>`, line).expression.children;
+    const isValidation = value.endsWith("_v");
+
+    if (isValidation) value = value.replace("_v", "");
+
+    const nodes = createNode(
+        `<Text>${extra.prep}{strings.${isValidation ? "validation." : ""}${value}${
+            extra.required ? "+ ' ' + strings.required}" : "}"
+        }${extra.app}</Text>`,
+        line
+    ).expression.children;
 
     return nodes;
 }
@@ -55,11 +64,18 @@ function createKeyContainerForLogicalExp(i18Object, expression) {
 
 const reviseText = function (val) {
     try {
-        const extra = { prep: "", app: "" };
+        const extra = { prep: "", app: "", required: false };
 
-        if (!val) return { result: "", extra }
+        if (val === undefined) return { result: "", extra };
 
-        const strrr = val.toString().split("").reduce((pv, cv, ind) => {
+        let value = val.toString().trim();
+
+        if (value.includes("الزامی")) {
+            extra.required = true;
+            value = value.replace("(الزامی)", "").trim();
+        }
+
+        const strrr = value.split("").reduce((pv, cv, ind) => {
             if (cv === " " || persianAlphabetCodes.includes(cv.charCodeAt(0))) {
                 pv += cv;
             } else if (ind > extra.prep.length) extra.app += cv;
@@ -68,13 +84,15 @@ const reviseText = function (val) {
             return pv;
         }, "");
 
-        return { result: strrr ?? "", extra };
-    } catch {}
+        return { result: strrr?.trim() ?? "", extra };
+    } catch (err) {
+        console.log(err);
+    }
 };
 
 const persianAlphabetCodes = [
-    1570, 1575, 1576, 1662, 1578, 1579, 1580, 1670, 1581, 1582, 1583, 1584, 1585, 1586, 1688, 1587, 1588, 1589, 1590, 1591, 1592, 1593, 1594, 1601, 1602, 1705,
-    1711, 1604, 1605, 1606, 1608, 1607, 1740,
+    1570, 1575, 1576, 1662, 1578, 1579, 1580, 1670, 1581, 1582, 1583, 1584, 1585, 1586, 1688, 1587, 1588, 1589, 1590, 1591, 1592,
+    1593, 1594, 1601, 1602, 1705, 1711, 1604, 1605, 1606, 1608, 1607, 1740,
 ];
 
 module.exports = {

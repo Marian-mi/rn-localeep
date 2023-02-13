@@ -1,110 +1,178 @@
-import React, { useContext, useEffect, useLayoutEffect, useRef, useState } from "react"
-import { View, Text, Image, useWindowDimensions, StyleSheet } from "react-native"
-import { ScrollView } from "react-native-gesture-handler"
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import Pressable from "react-native/Libraries/Components/Pressable/Pressable"
-import { Axios } from "../../../App"
-import ProductContext from "../../ContextProviders/ProductContext"
-import Carousel from "../../Fragments/Carousel/Carousel"
-import ProductList from "../../Fragments/ProductList/ProductList"
-import { BoxStyles, Colors, Flex } from "../../Styles/Index"
-import ProductPageHeader from "../../Fragments/Headers/ProductPage"
-import RenderHtml from "react-native-render-html"
-import DotsLoader from "../../Fragments/Loaders/DotsLoader"
-import { AppHelper } from "../../config"
-import { ProductPageApi } from "./Api"
-import { Styles } from "./Styles"
+import React, { useContext, useRef, useState, useEffect } from "react"
+import { View, Text, TouchableOpacity } from "react-native"
+import { CheckBox } from "@ui-kitten/components"
+import { Input } from "@ui-kitten/components"
+import SlidingUpPanel from "rn-sliding-up-panel"
+import useDidMountEffect from "../../../../Hooks/useEffectAfterUpdate"
+import Loading from "../../../Shared/loader"
+import Button from "../../../Shared/button"
+import Icon from "../../../Shared/icon"
+import CartList from "../../../../Fragments/CartList/Yalda"
+import Nav__R_Cart from "../../../../Fragments/TopNavigations/Yalda/Nav__R_Cart"
+
+import { colors, baseStyles, dpi } from "../../../../global-styles"
+import { styles } from "./styles"
+
+import { CartContext, ShopConfigContext, UserContext } from "../../../../appContext"
+import OrderItemDescription from "../../../../Fragments/OrderItemDescription"
 import { useLocalized } from "react"
 
-const ProductPage = ({ route }) => {
+export default function Cart(props) {
     const { strings } = useLocalized()
-    const { product, setProducts, isFetching } = useContext(ProductContext)
+    const cartContext = useContext(CartContext)
+    const configContext = useContext(ShopConfigContext)
+    const userContext = useContext(UserContext)
+    const floatingPanel = useRef(null)
 
-    const { ID } = route.params
+    const [visible, setVisible] = useState(false)
+    const [discountCode, setDiscountCode] = useState(null)
 
-    const { width } = useWindowDimensions()
-    const [scrollY, setScrollY] = useState(0)
+    const discountIcon = () => <Icon color={colors.colorDefault400} name="gift" size={dpi <= 320 ? 19 : 22} />
 
-    const Api = useRef(new ProductPageApi(setProducts)).current
-
-    useLayoutEffect(() => {
-        setProducts((ps) => ({ ...ps, isFetching: true }))
-    }, [])
-
-    useEffect(() => {
-        Api.loadProduct(ID)
-    }, [])
-
-    if (isFetching) return <DotsLoader />
-
-    const renderItem = (item) => {
-        return (
-            <PureView key={item.Path} style={{ width: width }}>
-                <Image source={{ uri: AppHelper.MapToServerPath(item.Path), width: width, height: width }} />
-            </PureView>
-        )
+    const handlePanel = () => {
+        setVisible(!visible)
     }
 
-    return (
-        <ScrollView onScroll={(e) => setScrollY(e.nativeEvent.contentOffset.y)} stickyHeaderIndices={[0]}>
-            <ProductPageHeader title={product.Title.Main} scrollY={scrollY} />
-            <View style={{ position: "relative", zIndex: 0 }}>
-                <Text>{strings.addToCart}:یشصیصشی</Text>
-                <Carousel
-                    data={product.ProductImages.BigGallery ?? product.ProductImages}
-                    renderer={renderItem}
-                    keyExtractor={(item) => item.Path}
-                />
-                <Title title={product.Title.Main} />
-                <View style={{ padding: 20 }}>
-                    <Buttons />
-                    <View style={Styles.Details}>
-                        <View style={Styles.Description}>
-                            <RenderHtml source={{ html: product.Description }} contentWidth={300} />
-                        </View>
-                        <Text style={Styles.Price}>{product?.Prices?.NewPrice ?? "----"}</Text>
-                        <Text style={Styles.Score}>با خرید این کالا ۴۰ عدد گیشانتیون دریافت میکنید</Text>
-                        <Text style={Styles.Score}>{esx ?? strings.similarProducts}</Text>
+    useDidMountEffect(() => {
+        if (visible) floatingPanel.current.show()
+        else floatingPanel.current.hide()
+    }, [visible])
 
-                        <View style={Styles.AddtoCart}>
-                            <Icon name="cart-plus" size={32} color={"white"} />
-                            <Text style={{ marginStart: 20, color: "white", fontSize: 18, fontFamily: "Samim" }}>
-                                {strings.addToCart}:!!!!
-                            </Text>
+    return (
+        <Nav__R_Cart title={strings.yourCart} backIcon="close" navigation={props.navigation}>
+            {props.isLoading ? (
+                <Loading />
+            ) : (
+                <>
+                    {configContext.ShopConfigs.SuperUserConfig.COUPON && cartContext.Cart.Items.length != 0 && (
+                        <View style={styles.topFixContainer}>
+                            <Input
+                                value={cartContext.Cart.DiscountCode != null ? cartContext.Cart.DiscountCode : discountCode}
+                                style={styles.discountInput}
+                                textStyle={[baseStyles.baseTextInput, baseStyles.smallTextInput]}
+                                placeholder={strings.discountCoupon}
+                                disabled={cartContext.Cart.DiscountCode != null ? true : false}
+                                icon={discountIcon}
+                                onChangeText={setDiscountCode}
+                            />
+
+                            <Button
+                                title={cartContext.Cart.DiscountCode != null ? strings.deleteCoupon : strings.submitCoupon}
+                                pressInBG={colors.colorPrimary400}
+                                pressOutBG={colors.colorPrimary500}
+                                containerStyle={styles.discountBtn}
+                                textStyle={styles.btnText}
+                                onPress={() => props.onValidateDiscountCode(discountCode)}
+                            />
                         </View>
+                    )}
+
+                    {configContext.ShopConfigs.SuperUserConfig.SCORING_SYSTEM.IsEnable &&
+                        cartContext.Cart.Items.length != 0 &&
+                        userContext.User.UserId != undefined && (
+                            <View style={styles.scoreContainer}>
+                                <CheckBox
+                                    status="primary"
+                                    style={styles.checkboxContainer}
+                                    checked={cartContext.Cart.IsUseScore}
+                                    onChange={(isCheck) => props.onUseScore(isCheck)}
+                                />
+
+                                <Text style={styles.scoreText}>
+                                    {strings.useScores}
+                                    {userContext.User.UserScore}
+                                </Text>
+                            </View>
+                        )}
+
+                    <View style={styles.mainContainer}>
+                        <CartList
+                            onCartUpdate={props.onCartUpdate}
+                            onCartDelete={props.onCartDelete}
+                            onOrderDescrpitionPress={props.onOrderDescrpitionPress}
+                            cartItems={cartContext.Cart.Items}
+                        />
                     </View>
-                </View>
-                <ProductList products={product.SimilarProducts} title={strings.relatedProducts} />
-                <ProductList products={product.RelatedProducts} title={esx ?? "محصولات مرتبط"} />
-            </View>
-        </ScrollView>
+
+                    {cartContext.Cart.Items.length != 0 && (
+                        <>
+                            <View style={styles.bottomFixContainer}>
+                                <Button
+                                    title={strings.checkout}
+                                    containerStyle={styles.confirmBtn}
+                                    textStyle={styles.btnText}
+                                    onPress={props.onHandleCheckout}
+                                    pressInBG={colors.colorSuccess400}
+                                    pressOutBG={colors.colorSuccess600}
+                                />
+
+                                <TouchableOpacity style={styles.totalPriceContainer} activeOpacity={1} onPress={handlePanel}>
+                                    <View style={{ flexDirection: "row" }}>
+                                        <Text style={styles.basePriceText}>{strings.totalPrice}</Text>
+                                        <Icon
+                                            color={colors.colorDefault400}
+                                            style={styles.totalPriceIcon}
+                                            name="arrow-up"
+                                            size={dpi <= 320 ? 16 : 20}
+                                        />
+                                    </View>
+                                    <Text style={styles.basePriceText}>
+                                        {cartContext.Cart.FormattedPayablePrice} {cartContext.Cart.Items[0].PriceUnit}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <SlidingUpPanel
+                                friction={0.4}
+                                height={100}
+                                draggableRange={{ top: dpi <= 320 ? 226 : 244, bottom: 0 }}
+                                allowDragging={false}
+                                showBackdrop={false}
+                                ref={floatingPanel}
+                            >
+                                <View style={styles.floatingPanel}>
+                                    <View style={[styles.priceContainer, styles.priceSeperator]}>
+                                        <Text style={styles.basePriceText}>قیمت کل</Text>
+                                        <Text style={[styles.basePriceText, styles.priceText]}>
+                                            {cartContext.Cart.Items[0].TotalPrice} {cartContext.Cart.Items[0].PriceUnit}
+                                        </Text>
+                                    </View>
+                                    <View style={[styles.priceContainer, styles.priceSeperator]}>
+                                        <Text style={styles.basePriceText}>{strings.totalDiscount}</Text>
+                                        <Text style={[styles.basePriceText, styles.priceText]}>
+                                            {cartContext.Cart.FormattedTotalDiscount} {cartContext.Cart.Items[0].PriceUnit}
+                                        </Text>
+                                    </View>
+                                    <View style={[styles.priceContainer, styles.priceSeperator]}>
+                                        <Text style={styles.basePriceText}>{strings.postalPrice}</Text>
+                                        <Text style={[styles.basePriceText, styles.priceText]}>
+                                            {cartContext.Cart.PostalPrice > 0
+                                                ? cartContext.Cart.FormattedPostalPrice +
+                                                  " " +
+                                                  cartContext.Cart.Items[0].PriceUnit
+                                                : "---"}
+                                        </Text>
+                                    </View>
+                                    <View style={[styles.priceContainer, styles.priceSeperator]}>
+                                        <Text style={styles.basePriceText}>{strings.payablePrice}</Text>
+                                        <Text style={[styles.basePriceText, styles.priceText]}>
+                                            {cartContext.Cart.FormattedPayablePrice} {cartContext.Cart.Items[0].PriceUnit}
+                                        </Text>
+                                    </View>
+                                </View>
+                            </SlidingUpPanel>
+                        </>
+                    )}
+
+                    {configContext.ShopConfigs.SuperUserConfig.ORDER_DESC_IN_PRODUCT_PAGE.IsEnable && (
+                        <OrderItemDescription
+                            cartItemId={props.orderDescription.cartItemId}
+                            modalVisibleSetter={props.orderDescription.visible}
+                            onBackDropPress={props.onModalBackDropPress}
+                        />
+                    )}
+                </>
+            )}
+        </Nav__R_Cart>
     )
 }
-
-export const PureView = React.memo(({ children }) => <View>{children}</View>)
-
-const Title = ({ title }) => (
-    <View style={[Styles.Title]}>
-        <View style={[Flex.Row, { justifyContent: "flex-end" }]}>
-            <Icon name="heart" size={26} color={Colors.Grey} style={{ marginEnd: 15 }} />
-            <Icon name="share-variant" size={26} color={Colors.Grey} />
-        </View>
-        <Text style={Styles.TitleText}></Text>
-    </View>
-)
-
-const Buttons = () => (
-    <View style={Flex.Row}>
-        <Pressable style={Styles.Button}>
-            <Icon name="comment-multiple" size={22} color={Colors.Grey} />
-            <Text style={Styles.ButtonLabel}>{strings.userComments}</Text>
-        </Pressable>
-        <View style={{ flex: 1 }} />
-        <Pressable style={Styles.Button}>
-            <Icon name="clipboard-text-outline" size={26} color={Colors.Grey} />
-            <Text style={Styles.ButtonLabel}>{strings.attributes}</Text>
-        </Pressable>
-    </View>
-)
-
-export default ProductPage
